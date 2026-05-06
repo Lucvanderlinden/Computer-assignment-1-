@@ -1,5 +1,5 @@
 import numpy as np
-
+import matplotlib.pyplot as plt
 
 def normalized_lj_potential(rho):
     rho_inverse_6 = rho ** (-6)
@@ -57,3 +57,41 @@ def velocity_verlet_integrator(
         return None
 
     return np.array(qs), np.array(ps), np.array(ts)
+
+
+positions, momenta, time = velocity_verlet_integrator(
+    initial_position=1.3,
+    force_function=normalized_lj_force,
+    dt=2e-4
+)
+
+def total_energy(p, x):
+    Kin = []
+    for i in p:
+        TE = (i**2)
+        Kin.append(TE)
+    Pot = []
+    for j in x:
+        PE = normalized_lj_potential(j)
+        Pot.append(PE)
+    Kin =np.array(Kin)
+    Pot = np.array(Pot)
+    T = Kin + Pot
+    return T
+
+
+plt.figure()
+plt.plot(positions, momenta)
+plt.xlabel('position')
+plt.ylabel('momentum')
+plt.savefig('mijn_plot.png')
+plt.show()
+
+plt.figure()
+plt.plot(time, total_energy(momenta, positions))
+plt.xlabel('total energy')
+plt.ylabel('time')
+plt.savefig('Total_energy.png')
+plt.show()
+
+    
