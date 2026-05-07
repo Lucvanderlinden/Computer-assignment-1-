@@ -91,6 +91,7 @@ for q0 in q0_test:
 energies_test = np.array(energies_test)
 
 energies_values=np.linspace(energies_test.min(), energies_test.max(), 100)
+dE = energies_values[1] - energies_values[0]
 
 q0_values = np.interp(energies_values, energies_test, q0_test)
 
@@ -108,7 +109,6 @@ for q0 in q0_values:
     J.append(A/(2*np.pi))
 
 for i in range(len(J)-1):
-    dE = energies_values[i+1] - energies_values[i]
     dJ = J[i+1] - J[i]
     dJdE = dJ/dE
     dJ_dE.append(dJdE) 
@@ -121,39 +121,47 @@ T=np.linspace(0.1, 20, 5000)
 
 #function for partition function Z 
 def partition_function(energies, dJ_dE, beta):
-    dE = energies[1] - energies[0]
     Z = np.sum(dJ_dE * np.exp(-beta * energies) * dE)
     return Z
 
-def expected_energy(energies, dJ_dE, beta):
-    Z = partition_function(energies, dJ_dE, beta)
-    dE = energies[1] - energies[0]
-    expected_E = np.sum(energies * dJ_dE * np.exp(-beta * energies) * dE) / Z
+def partition_free_energy(L, beta):
+    Z_free = L/np.sqrt(2*np.pi*beta)
+    return Z_free
+
+def partition_function_total(energies, dJ_dE, beta, L):
+    Z_bound = partition_function(energies, dJ_dE, beta)
+    Z_free = partition_free_energy(L, beta)
+    Z_total = Z_bound + Z_free
+    return Z_total
+
+def expected_energy(energies, dJ_dE, beta, L):
+    Z = partition_function_total(energies, dJ_dE, beta, L)
+    expected_E = (np.sum(energies * dJ_dE * np.exp(-beta * energies) * dE) - L/(2*np.sqrt(2*np.pi*beta**3)) ) / Z
     return expected_E
 
-def heat_capacity(energies, dJ_dE, beta):
-    Z = partition_function(energies, dJ_dE, beta)
-    expected_E = expected_energy(energies, dJ_dE, beta)
-    dE = energies[1] - energies[0]
-    expected_E2 = np.sum(energies**2 * dJ_dE * np.exp(-beta * energies) * dE) / Z
-    C = (expected_E2 - expected_E**2) * beta**2 
+def heat_capacity(energies, dJ_dE, beta, L):
+    Z = partition_function_total(energies, dJ_dE, beta, L)
+    expected_E = expected_energy(energies, dJ_dE, beta, L)
+    d2Z_free = (3 * L) / (4 * np.sqrt(2 * np.pi)) * beta**(-5/2)
+    expected_E2 = (np.sum(energies**2 * dJ_dE * np.exp(-beta * energies) * dE) + d2Z_free) / Z
+    C = (expected_E2 - expected_E**2) * beta**2
     return C
 
 
 plt.figure()
-plt.plot(T, [expected_energy(energies_values[:-1], dJ_dE, 1/Temp) for Temp in T], label='Expected Energy')
+plt.plot(T, [expected_energy(energies_values[:-1], dJ_dE, 1/Temp, L=10) for Temp in T], label='Expected Energy')
 plt.title(r'Expected energy as a function of $k_BT$')
 plt.xlabel(r'$k_BT$')
 plt.ylabel(r'Expected Energy, $\langle E \rangle$')
-plt.savefig('expected_energy.png')
+plt.savefig('expected_energy_L=10.png')
 plt.show()
 
 
 plt.figure()
-plt.plot(T, [heat_capacity(energies_values[:-1], dJ_dE, 1/Temp) for Temp in T], label='Heat Capacity')
+plt.plot(T, [heat_capacity(energies_values[:-1], dJ_dE, 1/Temp, L=10) for Temp in T], label='Heat Capacity')
 plt.title('Heat capacity as a function of $k_BT$')
 plt.xlabel(r'$k_BT$')
 plt.ylabel('Heat Capacity, C')
-plt.savefig('heat_capacity.png')
+plt.savefig('heat_capacity_L=10.png')
 plt.show()
 

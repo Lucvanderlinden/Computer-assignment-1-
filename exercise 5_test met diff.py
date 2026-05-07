@@ -121,39 +121,45 @@ T=np.linspace(0.1, 20, 5000)
 
 #function for partition function Z 
 def partition_function(energies, dJ_dE, beta):
-    dE = energies[1] - energies[0]
-    Z = np.sum(dJ_dE * np.exp(-beta * energies) * dE)
+    Z = np.sum(dJ_dE * np.exp(-beta * energies))
     return Z
 
-def expected_energy(energies, dJ_dE, beta):
-    Z = partition_function(energies, dJ_dE, beta)
-    dE = energies[1] - energies[0]
-    expected_E = np.sum(energies * dJ_dE * np.exp(-beta * energies) * dE) / Z
+def partition_free_energy(L, beta):
+    Z_free = L/np.sqrt(2*np.pi*beta)
+    return Z_free
+
+def partition_function_total(energies, dJ_dE, beta, L):
+    Z_bound = partition_function(energies, dJ_dE, beta)
+    Z_free = partition_free_energy(L, beta)
+    Z_total = Z_bound + Z_free
+    return Z_total
+
+def expected_energy(energies, dJ_dE, beta, L):
+    Z = partition_function_total(energies, dJ_dE, beta, L)
+    expected_E = -1/Z * np.gradient(lambda b: Z, beta)
     return expected_E
 
-def heat_capacity(energies, dJ_dE, beta):
-    Z = partition_function(energies, dJ_dE, beta)
-    expected_E = expected_energy(energies, dJ_dE, beta)
-    dE = energies[1] - energies[0]
-    expected_E2 = np.sum(energies**2 * dJ_dE * np.exp(-beta * energies) * dE) / Z
-    C = (expected_E2 - expected_E**2) * beta**2 
+def heat_capacity(energies, dJ_dE, beta, L):
+    Z = partition_function_total(energies, dJ_dE, beta, L)
+    expected_E = expected_energy(energies, dJ_dE, beta, L)
+    C = np.gradient(lambda b: expected_E, 1/beta) 
     return C
 
 
 plt.figure()
-plt.plot(T, [expected_energy(energies_values[:-1], dJ_dE, 1/Temp) for Temp in T], label='Expected Energy')
+plt.plot(T, [expected_energy(energies_values[:-1], dJ_dE, 1/Temp, L=10) for Temp in T], label='Expected Energy')
 plt.title(r'Expected energy as a function of $k_BT$')
 plt.xlabel(r'$k_BT$')
 plt.ylabel(r'Expected Energy, $\langle E \rangle$')
-plt.savefig('expected_energy.png')
+plt.savefig('expected_energy_L=10.png')
 plt.show()
 
 
 plt.figure()
-plt.plot(T, [heat_capacity(energies_values[:-1], dJ_dE, 1/Temp) for Temp in T], label='Heat Capacity')
+plt.plot(T, [heat_capacity(energies_values[:-1], dJ_dE, 1/Temp, L=10) for Temp in T], label='Heat Capacity')
 plt.title('Heat capacity as a function of $k_BT$')
 plt.xlabel(r'$k_BT$')
 plt.ylabel('Heat Capacity, C')
-plt.savefig('heat_capacity.png')
+plt.savefig('heat_capacity_L=10.png')
 plt.show()
 
