@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+from scipy.interpolate import CubicSpline
 
 def normalized_lj_potential(rho):
     rho_inverse_6 = rho ** (-6)
@@ -14,7 +16,7 @@ def normalized_lj_force(rho):
 
 
 def velocity_verlet_integrator(
-    initial_position, force_function, dt=2e-4, max_steps=5_000_000
+    initial_position, force_function, dt, max_steps=5_000_000
 ):
     """
     Integrate one closed orbit using the velocity-Verlet algorithm.
@@ -66,32 +68,65 @@ positions, momenta, time = velocity_verlet_integrator(
 )
 
 def total_energy(p, x):
-    Kin = []
-    for i in p:
-        TE = (i**2)
-        Kin.append(TE)
-    Pot = []
-    for j in x:
-        PE = normalized_lj_potential(j)
-        Pot.append(PE)
-    Kin =np.array(Kin)
-    Pot = np.array(Pot)
+    Kin = 0.5*(p**2)
+    Pot = normalized_lj_potential(x)
     T = np.add(Kin,Pot)
     return T
 
+#lege lijsten initialiseren
+q0_test=np.linspace(1.05,2,1000)
+energies_test=[]
+trajectories=[]
+J=[]
+dJ_dE=[]
+T=[]
 
-plt.figure()
-plt.plot(positions, momenta)
-plt.xlabel('position')
-plt.ylabel('momentum')
-plt.savefig('mijn_plot.png')
-plt.show()
-
-plt.figure()
-plt.plot(time, total_energy(momenta, positions))
-plt.xlabel('total energy')
-plt.ylabel('time')
-plt.savefig('Total_energy.png')
-plt.show()
-
+for q0 in q0_test:
+    result=velocity_verlet_integrator(q0, normalized_lj_force, 2e-4)
+    if result==None:
+        continue
+    x,p,t = result
+    E_test=total_energy(p, x)[0]
+    energies_test.append(E_test)
     
+energies_test = np.array(energies_test)
+
+energies_values=np.linspace(energies_test.min(), energies_test.max(), 100)
+
+q0_values = np.interp(energies_values, energies_test, q0_test)
+
+norm = (energies_values - energies_values.min()) / (energies_values.max() - energies_values.min())
+
+for q0 in q0_values:
+    result=velocity_verlet_integrator(q0, normalized_lj_force, 2e-4)
+    if result==None:
+        continue
+    x,p,t = result
+    trajectories.append((x,p))
+    T.append(t[-1])
+    
+    A= 0.5 * np.abs(np.sum(x[:-1] * p[1:] - x[1:] * p[:-1])) / (2*np.pi)
+    J.append(A)
+
+for i in range(len(J)-1):
+    dE = energies_values[i+1] - energies_values[i]
+    dJ = J[i+1] - J[i]
+    dJdE = dJ/dE
+    dJ_dE.append(dJdE) 
+
+dJ_dE = np.array(dJ_dE)
+cs = CubicSpline(energies_values[:-1], dJ_dE)   
+x_new = np.linspace(energies_values[:-1].min(), energies_values[:-1].max(), 100)
+cs_values = cs(x_new)
+S = np.log(cs_values)
+
+
+
+plt.figure()
+plt.plot(x_new, 2*np.pi*cs_values)
+plt.plot(energies_values[:-1], T[:-1], 'r--')
+plt.title('Period comparison, evenly spaced in total energy')
+plt.xlabel('Energy, E')
+plt.ylabel('Period, T(E)')
+plt.savefig('period_evenly_spaced_energy.png')
+plt.show()

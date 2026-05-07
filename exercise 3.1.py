@@ -1,5 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+from scipy.interpolate import CubicSpline
 
 def normalized_lj_potential(rho):
     rho_inverse_6 = rho ** (-6)
@@ -14,7 +16,7 @@ def normalized_lj_force(rho):
 
 
 def velocity_verlet_integrator(
-    initial_position, force_function, dt=2e-4, max_steps=5_000_000
+    initial_position, force_function, dt, max_steps=5_000_000
 ):
     """
     Integrate one closed orbit using the velocity-Verlet algorithm.
@@ -66,32 +68,48 @@ positions, momenta, time = velocity_verlet_integrator(
 )
 
 def total_energy(p, x):
-    Kin = []
-    for i in p:
-        TE = (i**2)
-        Kin.append(TE)
-    Pot = []
-    for j in x:
-        PE = normalized_lj_potential(j)
-        Pot.append(PE)
-    Kin =np.array(Kin)
-    Pot = np.array(Pot)
+    Kin = 0.5*(p**2)
+    Pot = normalized_lj_potential(x)
     T = np.add(Kin,Pot)
     return T
 
+#lege lijsten initialiseren
+q0_test=np.linspace(1.05,2,1000)
+energies_test=[]
+trajectories=[]
+J=[]
 
-plt.figure()
-plt.plot(positions, momenta)
-plt.xlabel('position')
-plt.ylabel('momentum')
-plt.savefig('mijn_plot.png')
-plt.show()
-
-plt.figure()
-plt.plot(time, total_energy(momenta, positions))
-plt.xlabel('total energy')
-plt.ylabel('time')
-plt.savefig('Total_energy.png')
-plt.show()
-
+for q0 in q0_test:
+    result=velocity_verlet_integrator(q0, normalized_lj_force, 2e-4)
+    if result==None:
+        continue
+    x,p,t = result
+    E_test=total_energy(p, x)[0]
+    energies_test.append(E_test)
     
+energies_test = np.array(energies_test)
+
+energies_values=np.linspace(energies_test.min(), energies_test.max(), 100)
+
+q0_values = np.interp(energies_values, energies_test, q0_test)
+
+norm = (energies_values - energies_values.min()) / (energies_values.max() - energies_values.min())
+
+for q0 in q0_values:
+    result=velocity_verlet_integrator(q0, normalized_lj_force, 2e-4)
+    if result==None:
+        continue
+    x,p,t = result
+    trajectories.append((x,p))
+
+    A= 0.5 * np.abs(np.sum(x[:-1] * p[1:] - x[1:] * p[:-1]))
+    J.append(A/(2*np.pi))
+
+plt.figure()
+plt.plot(energies_values, J)
+plt.title('J(E), evenly spaced in total energy')
+plt.xlabel('Energy, E')
+plt.ylabel('J, J(E)')
+plt.savefig('J_E.png')
+plt.show()
+
